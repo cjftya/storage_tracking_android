@@ -88,7 +88,9 @@ public final class TreeNodeAdapter extends ListAdapter<TreeRowItem, TreeNodeAdap
                 OnRowClickListener clickListener,
                 OnFolderLongClickListener longClickListener) {
             float density = itemView.getResources().getDisplayMetrics().density;
-            int indentPx = (int) (Math.min(item.getDepth(), 10) * 14 * density + 6 * density);
+            int depth = item.getDepth();
+            int indentDp = Math.min(depth, 5) * 10 + Math.max(0, Math.min(depth - 5, 5)) * 6 + 4;
+            int indentPx = (int) (indentDp * density);
             int rightPx = (int) (8 * density);
             int vertPx = (int) (4 * density);
             rowRoot.setPadding(indentPx, vertPx, rightPx, vertPx);
