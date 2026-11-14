@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="app_bg">#121212</color>
+    <color name="surface_bg">#1E1E1E</color>
+    <color name="header_bg">#252528</color>
+    <color name="text_primary">#E8EAED</color>
+    <color name="text_secondary">#A8ABB2</color>
+    <color name="primary">#8AB4F8</color>
+    <color name="on_primary">#101828</color>
+    <color name="divider">#34363A</color>
+    <color name="error_text">#F2B8B5</color>
+    <color name="warning_bg">#3B2A14</color>
+    <color name="warning_text">#FFD599</color>
+    <color name="ok_bg">#163320</color>
+    <color name="ok_text">#A8DAB5</color>
+    <color name="row_light">#1A1B1E</color>
+    <color name="row_dark">#222428</color>
+    <color name="row_selected">#2D3F5E</color>
+</resources>
