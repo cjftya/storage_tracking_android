@@ -10,7 +10,6 @@ Android 로컬 및 이동식 공유 저장소에서 **어느 폴더와 파일이
 - **[📦 storage_tracking_android_v1.0_release.apk 다운로드](https://github.com/cjftya/storage_tracking_android/raw/main/releases/storage_tracking_android_v1.0_release.apk)** ([저장소 내 파일 보기](releases/storage_tracking_android_v1.0_release.apk))
 
 - **기능 기준**: [cjftya/storage_tracking](https://github.com/cjftya/storage_tracking) (v1.2 사양 대응)
-- **빌드 기준**: [cjftya/jelly_markdown](https://github.com/cjftya/jelly_markdown) (AGP 9.1.1 / Gradle 9.3.1 / Java 11 / SDK 26~36)
 - **절대 원칙**: 파일 본문을 읽거나 해시를 계산하지 않으며, 파일을 수정·이동·삭제하지 않습니다.
 
 ---
