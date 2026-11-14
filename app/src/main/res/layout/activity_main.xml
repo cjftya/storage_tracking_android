@@ -288,13 +288,30 @@
     </LinearLayout>
 
     <!-- Result Tree List -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_results"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="@color/row_light"
-        android:scrollbars="vertical" />
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_results"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/row_light"
+            android:scrollbars="vertical" />
+
+        <ProgressBar
+            android:id="@+id/progress_scanning"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
+            android:clickable="false"
+            android:focusable="false"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/primary"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <!-- Status Bar -->
     <LinearLayout

@@ -14,6 +14,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -73,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textModeMeaning;
     private TextView textHeadingSize;
     private RecyclerView recyclerResults;
+    private ProgressBar progressScanning;
     private TextView textStatus;
     private TextView textCurrentPath;
 
@@ -175,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
         textModeMeaning = findViewById(R.id.text_mode_meaning);
         textHeadingSize = findViewById(R.id.text_heading_size);
         recyclerResults = findViewById(R.id.recycler_results);
+        progressScanning = findViewById(R.id.progress_scanning);
         textStatus = findViewById(R.id.text_status);
         textCurrentPath = findViewById(R.id.text_current_path);
 
@@ -412,6 +415,7 @@ public class MainActivity extends AppCompatActivity {
         buttonScanRestart.setEnabled(viewModel.isStartEnabled());
         buttonCancel.setEnabled(viewModel.isCancelEnabled());
         buttonClearFolder.setEnabled(viewModel.hasSelectedFolder());
+        progressScanning.setVisibility(viewModel.isScanning() ? View.VISIBLE : View.GONE);
 
         textSelectedFolder.setText(
                 viewModel.hasSelectedFolder()

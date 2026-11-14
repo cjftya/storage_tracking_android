@@ -95,6 +95,7 @@ public final class ScannerViewModel extends ViewModel {
     private CompletionNotice pendingNotice = null;
 
     private boolean cancelEnabled = false;
+    private boolean scanning = false;
     private String statusText = "Select a folder to scan.";
     private String currentPathText = "";
 
@@ -147,6 +148,7 @@ public final class ScannerViewModel extends ViewModel {
         this.pendingNotice = null;
         this.currentPathText = "";
         this.cancelEnabled = false;
+        this.scanning = false;
         this.statusText = "Ready - press Scan / Restart.";
     }
 
@@ -213,6 +215,10 @@ public final class ScannerViewModel extends ViewModel {
 
     public boolean isCancelEnabled() {
         return cancelEnabled;
+    }
+
+    public boolean isScanning() {
+        return scanning;
     }
 
     public String getMinSizeMibText() {
@@ -284,6 +290,7 @@ public final class ScannerViewModel extends ViewModel {
         }
 
         this.cancelEnabled = true;
+        this.scanning = true;
         this.statusText = "Scanning…";
         this.currentPathText = "";
     }
@@ -322,6 +329,7 @@ public final class ScannerViewModel extends ViewModel {
         }
         if (snapshot.isFinished()) {
             cancelEnabled = false;
+            scanning = false;
             if (snapshot.getError() != null) {
                 state = "Failed";
             } else if (snapshot.getSummary() != null && snapshot.getSummary().isCancelled()) {
@@ -396,6 +404,7 @@ public final class ScannerViewModel extends ViewModel {
         }
         if (snapshot.isFinished()) {
             cancelEnabled = false;
+            scanning = false;
             if (snapshot.getError() != null) {
                 state = "Failed";
             } else if (snapshot.getSummary() != null && snapshot.getSummary().isCancelled()) {
