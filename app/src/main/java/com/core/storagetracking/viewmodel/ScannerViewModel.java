@@ -162,6 +162,12 @@ public final class ScannerViewModel extends ViewModel {
         if (initial && excludedPathsText.isEmpty() && discovery != null && !discovery.getDefaultExclusions().isEmpty()) {
             this.excludedPathsText = String.join("\n", discovery.getDefaultExclusions()) + "\n";
         }
+        if (!hasSelectedFolder() && discovery != null) {
+            String defaultFolder = StorageVolumeProvider.resolveDefaultFolder(discovery);
+            if (defaultFolder != null && !defaultFolder.trim().isEmpty()) {
+                this.selectedFolder = PathPolicy.pathKey(defaultFolder);
+            }
+        }
         if (runId == null) {
             this.statusText = hasSelectedFolder() ? "Ready" : "Select a folder to scan.";
         }

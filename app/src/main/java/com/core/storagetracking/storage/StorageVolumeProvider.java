@@ -77,11 +77,15 @@ public final class StorageVolumeProvider {
             }
         }
 
-        // Fallback to Environment.getExternalStorageDirectory() if StorageManager returned nothing
+        // Fallback to Environment.getExternalStorageDirectory() or /storage/emulated/<userId> if StorageManager returned nothing
         if (volumes.isEmpty()) {
             try {
                 File ext = Environment.getExternalStorageDirectory();
-                if (ext != null && ext.exists()) {
+                if (ext == null || !ext.exists()) {
+                    int userId = Math.max(0, android.os.Process.myUid() / 100000);
+                    ext = new File("/storage/emulated/" + userId);
+                }
+                if (ext.exists()) {
                     String normalized = PathPolicy.pathKey(ext.getAbsolutePath());
                     String canonical = canonicalOrNormalized(ext, normalized);
                     if (seenCanonical.add(canonical)) {
@@ -90,7 +94,7 @@ public final class StorageVolumeProvider {
                                 "Internal shared storage",
                                 true,
                                 false,
-                                Environment.getExternalStorageState()));
+                                Environment.MEDIA_MOUNTED));
                         roots.add(normalized);
                         boundaries.add(normalized);
                     }
@@ -133,6 +137,53 @@ public final class StorageVolumeProvider {
                 boundaries,
                 Collections.emptyList(),
                 MANDATORY_EXCLUSIONS);
+    }
+
+    /**
+     * Resolves the default primary shared storage folder for the current Android user
+     * (e.g., /storage/emulated/0 for user 0, /storage/emulated/150 for user 150).
+     */
+    public static String resolveDefaultFolder(StorageDiscovery discovery) {
+        if (discovery != null && discovery.getVolumes() != null) {
+            for (StorageVolumeInfo vol : discovery.getVolumes()) {
+                if (vol.isPrimary() && vol.getPath().startsWith("/storage/emulated/")) {
+                    return vol.getPath();
+                }
+            }
+            for (StorageVolumeInfo vol : discovery.getVolumes()) {
+                if (vol.isPrimary()) {
+                    return vol.getPath();
+                }
+            }
+            for (StorageVolumeInfo vol : discovery.getVolumes()) {
+                if (vol.getPath().startsWith("/storage/emulated/")) {
+                    return vol.getPath();
+                }
+            }
+            if (!discovery.getVolumes().isEmpty()) {
+                return discovery.getVolumes().get(0).getPath();
+            }
+        }
+        return resolveCurrentUserEmulatedStoragePath();
+    }
+
+    public static String resolveCurrentUserEmulatedStoragePath() {
+        try {
+            File ext = Environment.getExternalStorageDirectory();
+            if (ext != null && !ext.getPath().isEmpty()) {
+                return PathPolicy.pathKey(ext.getAbsolutePath());
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            int userId = Math.max(0, android.os.Process.myUid() / 100000);
+            File userEmulated = new File("/storage/emulated/" + userId);
+            if (userEmulated.exists()) {
+                return PathPolicy.pathKey(userEmulated.getAbsolutePath());
+            }
+        } catch (Throwable ignored) {
+        }
+        return "/storage/emulated/0";
     }
 
     public static void validateRoots(StorageDiscovery discovery, Collection<String> candidateRoots) {
@@ -186,7 +237,10 @@ public final class StorageVolumeProvider {
 
     private static File resolveVolumeDirectory(StorageVolume sv) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return sv.getDirectory();
+            File dir = sv.getDirectory();
+            if (dir != null) {
+                return dir;
+            }
         }
         try {
             Method getPathFile = StorageVolume.class.getDeclaredMethod("getPathFile");

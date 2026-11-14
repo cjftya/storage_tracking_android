@@ -16,6 +16,7 @@ import com.core.storagetracking.R;
 import com.core.storagetracking.scan.common.PathPolicy;
 import com.core.storagetracking.storage.StorageDiscovery;
 import com.core.storagetracking.storage.StorageVolumeInfo;
+import com.core.storagetracking.storage.StorageVolumeProvider;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -106,8 +107,8 @@ public final class FolderPickerDialog {
         }
 
         String startPath = initialFolder;
-        if ((startPath == null || startPath.isEmpty()) && !volumes.isEmpty()) {
-            startPath = volumes.get(0).getPath();
+        if (startPath == null || startPath.isEmpty()) {
+            startPath = StorageVolumeProvider.resolveDefaultFolder(discovery);
         }
         if (startPath != null) {
             editPath.setText(startPath);
