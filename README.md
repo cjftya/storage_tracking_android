@@ -1,6 +1,13 @@
 # Storage Tracking Android (v1.0)
 
+<p align="left">
+  <img src="app/src/main/res/mipmap-xxxhdpi/icon.png" width="96" height="96" alt="Storage Tracking Android Icon" />
+</p>
+
 Android 로컬 및 이동식 공유 저장소에서 **어느 폴더와 파일이 저장 공간을 얼마나 사용하고 있는지** 폴더·파일 단위로 정확하고 빠르게 확인하는 읽기 전용 네이티브 Android 애플리케이션입니다.
+
+### 📥 릴리즈 APK 바로 다운로드
+- **[📦 storage_tracking_android_v1.0_release.apk 다운로드](https://github.com/cjftya/storage_tracking_android/raw/main/releases/storage_tracking_android_v1.0_release.apk)** ([저장소 내 파일 보기](releases/storage_tracking_android_v1.0_release.apk))
 
 - **기능 기준**: [cjftya/storage_tracking](https://github.com/cjftya/storage_tracking) (v1.2 사양 대응)
 - **빌드 기준**: [cjftya/jelly_markdown](https://github.com/cjftya/jelly_markdown) (AGP 9.1.1 / Gradle 9.3.1 / Java 11 / SDK 26~36)
@@ -72,6 +79,9 @@ app/src/main/java/com/core/storagetracking/
 
 ### 빌드 및 단위 테스트
 ```powershell
+# Release APK 빌드
+.\gradlew.bat :app:assembleRelease
+
 # Debug APK 빌드
 .\gradlew.bat :app:assembleDebug
 
@@ -79,10 +89,12 @@ app/src/main/java/com/core/storagetracking/
 .\gradlew.bat :app:testDebugUnitTest
 ```
 
-### APK 생성 경로 및 기기 설치
+### APK 다운로드 및 기기 설치
+- **GitHub에서 Release APK 바로 다운로드**: [storage_tracking_android_v1.0_release.apk](https://github.com/cjftya/storage_tracking_android/raw/main/releases/storage_tracking_android_v1.0_release.apk)
+- **생성된 Release APK 경로**: `app/build/outputs/apk/release/app-release.apk` (또는 `releases/storage_tracking_android_v1.0_release.apk`)
 - **생성된 Debug APK 경로**: `app/build/outputs/apk/debug/app-debug.apk`
-- **USB 디버깅 연결 기기에 직접 설치**:
+- **ADB 연결 기기에 직접 설치**:
   ```powershell
-  adb install -r app\build\outputs\apk\debug\app-debug.apk
+  adb install -r releases\storage_tracking_android_v1.0_release.apk
   ```
-- 또는 `app-debug.apk` 파일을 Android 기기로 복사한 뒤 파일 관리자에서 직접 실행하여 설치할 수 있습니다. 설치 후 앱 상단의 **Grant access**를 눌러 저장소 접근 권한을 허용하고 **Select folder** → **Scan / Restart** 순서로 스캔을 실행합니다.
+- 또는 APK 파일을 Android 기기에서 다운로드한 뒤 파일 관리자에서 바로 실행하여 설치할 수 있습니다. 설치 후 앱 상단의 **Grant access**를 눌러 저장소 접근 권한을 허용하고 **Scan / Restart**를 눌러 스캔을 실행합니다.
