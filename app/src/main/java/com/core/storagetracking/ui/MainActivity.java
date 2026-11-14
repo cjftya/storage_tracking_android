@@ -2,6 +2,7 @@ package com.core.storagetracking.ui;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,10 +23,13 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -107,11 +111,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
         View rootLayout = findViewById(R.id.root_layout);
+        applySystemBarAppearance(rootLayout);
         int basePaddingPx = (int) (10 * getResources().getDisplayMetrics().density);
         ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, insets) -> {
             Insets safeInsets = insets.getInsets(
@@ -429,5 +435,16 @@ public class MainActivity extends AppCompatActivity {
     private void stopPeriodicTimer() {
         tickScheduled = false;
         uiHandler.removeCallbacks(periodicTickRunnable);
+    }
+
+    private void applySystemBarAppearance(View rootView) {
+        boolean isNightMode = (getResources().getConfiguration().uiMode
+                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(getWindow(), rootView);
+        if (controller != null) {
+            controller.setAppearanceLightStatusBars(!isNightMode);
+            controller.setAppearanceLightNavigationBars(!isNightMode);
+        }
     }
 }
