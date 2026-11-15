@@ -271,6 +271,49 @@ public class ScannerIndependenceAndLifecycleTest {
         assertEquals(400, tree.getOffset(root));
     }
 
+    @Test
+    public void testMultiExclusionManagementAndParentRatio() {
+        ScannerViewModel vm = new ScannerViewModel();
+        assertTrue(vm.getExcludedPaths().isEmpty());
+
+        String ex1 = PathPolicy.pathKey(new File(tempRoot.toFile(), "cache").getPath());
+        String ex2 = PathPolicy.pathKey(new File(tempRoot.toFile(), "tmp").getPath());
+
+        assertTrue(vm.addExcludedPath(ex1));
+        assertFalse("Duplicate exclusion should not be added twice", vm.addExcludedPath(ex1));
+        assertTrue(vm.addExcludedPath(ex2));
+        assertEquals(2, vm.getExcludedPaths().size());
+        assertTrue(vm.getExcludedPaths().contains(ex1));
+        assertTrue(vm.getExcludedPaths().contains(ex2));
+
+        assertTrue(vm.removeExcludedPath(ex1));
+        assertEquals(1, vm.getExcludedPaths().size());
+        assertEquals(ex2, vm.getExcludedPaths().get(0));
+
+        vm.clearExcludedPaths();
+        assertTrue(vm.getExcludedPaths().isEmpty());
+        assertEquals("", vm.getExcludedPathsText());
+
+        String root = PathPolicy.pathKey(tempRoot.toString());
+        String subA = PathPolicy.pathKey(new File(root, "subA").getPath());
+        String subB = PathPolicy.pathKey(new File(root, "subB").getPath());
+        FolderResultStore store = new FolderResultStore(Collections.singletonList(root));
+        store.addBatch(Arrays.asList(
+                new DirectoryDelta(subA, 750L),
+                new DirectoryDelta(subB, 250L)));
+        store.finish(true);
+
+        FolderTreeState tree = new FolderTreeState();
+        tree.reset(store, 1);
+        tree.refreshAllPending();
+        tree.toggleExpand(root);
+        List<TreeRowItem> rows = tree.buildVisibleRows();
+        assertEquals(3, rows.size());
+        assertEquals(1.0f, rows.get(0).getParentRatio(), 0.001f);
+        assertEquals(0.75f, rows.get(1).getParentRatio(), 0.001f);
+        assertEquals(0.25f, rows.get(2).getParentRatio(), 0.001f);
+    }
+
     private static void waitUntilFinished(ScannerViewModel vm) {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (System.nanoTime() < deadline) {

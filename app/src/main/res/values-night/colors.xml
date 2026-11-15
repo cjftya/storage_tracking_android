@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="app_bg">#121212</color>
-    <color name="surface_bg">#1E1E1E</color>
-    <color name="header_bg">#252528</color>
-    <color name="text_primary">#E8EAED</color>
-    <color name="text_secondary">#A8ABB2</color>
-    <color name="primary">#8AB4F8</color>
-    <color name="on_primary">#101828</color>
-    <color name="divider">#34363A</color>
+    <color name="app_bg">#111318</color>
+    <color name="surface_bg">#1B1E26</color>
+    <color name="surface_variant">#242934</color>
+    <color name="header_bg">#222733</color>
+    <color name="text_primary">#E8ECF4</color>
+    <color name="text_secondary">#9AA3B2</color>
+    <color name="primary">#82A8FF</color>
+    <color name="on_primary">#08204F</color>
+    <color name="primary_container">#1E3466</color>
+    <color name="on_primary_container">#DCE6FF</color>
+    <color name="divider">#2F3542</color>
     <color name="error_text">#F2B8B5</color>
-    <color name="warning_bg">#3B2A14</color>
-    <color name="warning_text">#FFD599</color>
-    <color name="ok_bg">#163320</color>
-    <color name="ok_text">#A8DAB5</color>
-    <color name="row_light">#1A1B1E</color>
-    <color name="row_dark">#222428</color>
-    <color name="row_selected">#2D3F5E</color>
+    <color name="warning_bg">#3A2710</color>
+    <color name="warning_text">#FFD699</color>
+    <color name="ok_bg">#163322</color>
+    <color name="ok_text">#9ADDB1</color>
+    <color name="row_light">#1B1E26</color>
+    <color name="row_dark">#1F232D</color>
+    <color name="row_selected">#273B63</color>
+    <color name="bar_track">#2D3340</color>
+    <color name="bar_fill">#6E9BFF</color>
+    <color name="bar_fill_file">#4FD1B8</color>
+    <color name="folder_icon_tint">#F0B44B</color>
+    <color name="file_icon_tint">#88B2E6</color>
+    <color name="chip_bg">#262C38</color>
 </resources>

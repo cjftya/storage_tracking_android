@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="app_bg">#F5F5F3</color>
+    <color name="app_bg">#F4F6FA</color>
     <color name="surface_bg">#FFFFFF</color>
-    <color name="header_bg">#ECECEA</color>
-    <color name="text_primary">#202124</color>
-    <color name="text_secondary">#5F6368</color>
-    <color name="primary">#2B579A</color>
+    <color name="surface_variant">#ECEFF5</color>
+    <color name="header_bg">#E8EDF5</color>
+    <color name="text_primary">#181C24</color>
+    <color name="text_secondary">#5A6270</color>
+    <color name="primary">#1E5EFF</color>
     <color name="on_primary">#FFFFFF</color>
-    <color name="divider">#D7D7D2</color>
+    <color name="primary_container">#DCE6FF</color>
+    <color name="on_primary_container">#001B4F</color>
+    <color name="divider">#DCE1EB</color>
     <color name="error_text">#B3261E</color>
-    <color name="warning_bg">#FFF4E5</color>
-    <color name="warning_text">#663C00</color>
-    <color name="ok_bg">#E8F5E9</color>
-    <color name="ok_text">#1B5E20</color>
-    <color name="row_light">#F5F5F5</color>
-    <color name="row_dark">#E8E8E8</color>
-    <color name="row_selected">#D2E3FC</color>
+    <color name="warning_bg">#FFF3E0</color>
+    <color name="warning_text">#7A4100</color>
+    <color name="ok_bg">#E6F4EA</color>
+    <color name="ok_text">#137333</color>
+    <color name="row_light">#FFFFFF</color>
+    <color name="row_dark">#F8FAFD</color>
+    <color name="row_selected">#E3ECFF</color>
+    <color name="bar_track">#E4E8F0</color>
+    <color name="bar_fill">#3B76FF</color>
+    <color name="bar_fill_file">#0F9D8A</color>
+    <color name="folder_icon_tint">#E89B2D</color>
+    <color name="file_icon_tint">#4A6FA5</color>
+    <color name="chip_bg">#EEF2F8</color>
 </resources>

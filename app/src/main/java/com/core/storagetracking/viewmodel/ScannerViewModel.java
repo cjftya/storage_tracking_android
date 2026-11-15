@@ -34,19 +34,145 @@ public final class ScannerViewModel extends ViewModel {
     public static final String MODE_FILE = "file";
     public static final int DEFAULT_UPDATE_MS = 1000;
 
+    public enum StatusKind {
+        SELECT_FOLDER,
+        CHECKING_DRIVES,
+        DRIVES_UNAVAILABLE,
+        READY,
+        READY_PRESS_SCAN,
+        SCANNING_STARTING,
+        CANCELLING,
+        SCANNING,
+        COMPLETED,
+        COMPLETED_PARTIAL,
+        CANCELLED,
+        CANCELLED_PARTIAL,
+        FAILED,
+        FAILED_PARTIAL
+    }
+
+    public static final class StatusUiInfo {
+        private final StatusKind kind;
+        private final boolean folderMode;
+        private final long filesScanned;
+        private final long directoriesScanned;
+        private final long foldersStored;
+        private final long bytesScanned;
+        private final long matches;
+        private final long errors;
+        private final double elapsedSeconds;
+        private final String detail;
+
+        public StatusUiInfo(
+                StatusKind kind,
+                boolean folderMode,
+                long filesScanned,
+                long directoriesScanned,
+                long foldersStored,
+                long bytesScanned,
+                long matches,
+                long errors,
+                double elapsedSeconds,
+                String detail) {
+            this.kind = kind;
+            this.folderMode = folderMode;
+            this.filesScanned = filesScanned;
+            this.directoriesScanned = directoriesScanned;
+            this.foldersStored = foldersStored;
+            this.bytesScanned = bytesScanned;
+            this.matches = matches;
+            this.errors = errors;
+            this.elapsedSeconds = elapsedSeconds;
+            this.detail = detail == null ? "" : detail;
+        }
+
+        public StatusKind getKind() {
+            return kind;
+        }
+
+        public boolean isFolderMode() {
+            return folderMode;
+        }
+
+        public long getFilesScanned() {
+            return filesScanned;
+        }
+
+        public long getDirectoriesScanned() {
+            return directoriesScanned;
+        }
+
+        public long getFoldersStored() {
+            return foldersStored;
+        }
+
+        public long getBytesScanned() {
+            return bytesScanned;
+        }
+
+        public long getMatches() {
+            return matches;
+        }
+
+        public long getErrors() {
+            return errors;
+        }
+
+        public double getElapsedSeconds() {
+            return elapsedSeconds;
+        }
+
+        public String getDetail() {
+            return detail;
+        }
+    }
+
     public static final class CompletionNotice {
         private final int runId;
         private final Object storeIdentity;
         private final boolean error;
         private final String title;
         private final String message;
+        private final boolean hasMetrics;
+        private final boolean folderMode;
+        private final long primaryCount;
+        private final long bytesScanned;
+        private final boolean partial;
+        private final long filesScanned;
+        private final long errors;
+        private final double elapsedSeconds;
 
         public CompletionNotice(int runId, Object storeIdentity, boolean error, String title, String message) {
+            this(runId, storeIdentity, error, title, message, false, true, 0L, 0L, false, 0L, 0L, 0.0);
+        }
+
+        public CompletionNotice(
+                int runId,
+                Object storeIdentity,
+                boolean error,
+                String title,
+                String message,
+                boolean hasMetrics,
+                boolean folderMode,
+                long primaryCount,
+                long bytesScanned,
+                boolean partial,
+                long filesScanned,
+                long errors,
+                double elapsedSeconds) {
             this.runId = runId;
             this.storeIdentity = storeIdentity;
             this.error = error;
             this.title = title;
             this.message = message;
+            this.hasMetrics = hasMetrics;
+            this.folderMode = folderMode;
+            this.primaryCount = primaryCount;
+            this.bytesScanned = bytesScanned;
+            this.partial = partial;
+            this.filesScanned = filesScanned;
+            this.errors = errors;
+            this.elapsedSeconds = elapsedSeconds;
         }
 
         public int getRunId() {
@@ -68,6 +194,38 @@ public final class ScannerViewModel extends ViewModel {
         public String getMessage() {
             return message;
         }
+
+        public boolean hasMetrics() {
+            return hasMetrics;
+        }
+
+        public boolean isFolderMode() {
+            return folderMode;
+        }
+
+        public long getPrimaryCount() {
+            return primaryCount;
+        }
+
+        public long getBytesScanned() {
+            return bytesScanned;
+        }
+
+        public boolean isPartial() {
+            return partial;
+        }
+
+        public long getFilesScanned() {
+            return filesScanned;
+        }
+
+        public long getErrors() {
+            return errors;
+        }
+
+        public double getElapsedSeconds() {
+            return elapsedSeconds;
+        }
     }
 
     private final ReentrantLock scanLock = new ReentrantLock();
@@ -88,16 +246,28 @@ public final class ScannerViewModel extends ViewModel {
     private String selectedFolder = null;
     private String minSizeMibText = SizeConverter.bytesToMib(SizeConverter.DEFAULT_MIN_SIZE_BYTES);
     private String excludedPathsText = "";
+    private boolean scopeExpanded = true;
+    private boolean editExclusionsRaw = false;
 
     private Integer runId = null;
     private Integer presentedRunId = null;
     private Integer notifiedRunId = null;
     private CompletionNotice pendingNotice = null;
+    private String pendingReportFocusPath = null;
 
     private boolean cancelEnabled = false;
     private boolean scanning = false;
     private String statusText = "Select a folder to scan.";
+    private StatusUiInfo statusUiInfo = simpleStatus(StatusKind.SELECT_FOLDER, "");
     private String currentPathText = "";
+
+    private static StatusUiInfo simpleStatus(StatusKind kind, String detail) {
+        return new StatusUiInfo(kind, true, 0L, 0L, 0L, 0L, 0L, 0L, 0.0, detail);
+    }
+
+    public StatusUiInfo getStatusUiInfo() {
+        return statusUiInfo;
+    }
 
     public String getScanMode() {
         return scanMode;
@@ -150,6 +320,7 @@ public final class ScannerViewModel extends ViewModel {
         this.cancelEnabled = false;
         this.scanning = false;
         this.statusText = "Ready - press Scan / Restart.";
+        this.statusUiInfo = simpleStatus(StatusKind.READY_PRESS_SCAN, "");
     }
 
     public StorageDiscovery getDiscovery() {
@@ -169,7 +340,9 @@ public final class ScannerViewModel extends ViewModel {
             }
         }
         if (runId == null) {
-            this.statusText = hasSelectedFolder() ? "Ready" : "Select a folder to scan.";
+            boolean hasFolder = hasSelectedFolder();
+            this.statusText = hasFolder ? "Ready" : "Select a folder to scan.";
+            this.statusUiInfo = simpleStatus(hasFolder ? StatusKind.READY : StatusKind.SELECT_FOLDER, "");
         }
     }
 
@@ -177,12 +350,14 @@ public final class ScannerViewModel extends ViewModel {
         this.discovery = null;
         this.discovering = false;
         this.statusText = "Drives unavailable: " + reason;
+        this.statusUiInfo = simpleStatus(StatusKind.DRIVES_UNAVAILABLE, reason);
     }
 
     public void markDiscovering() {
         this.discovering = true;
         if (runId == null) {
             this.statusText = "Checking drives…";
+            this.statusUiInfo = simpleStatus(StatusKind.CHECKING_DRIVES, "");
         }
     }
 
@@ -205,6 +380,7 @@ public final class ScannerViewModel extends ViewModel {
         this.selectedFolder = PathPolicy.pathKey(folderPath);
         if (runId == null && !discovering && discovery != null) {
             this.statusText = "Ready";
+            this.statusUiInfo = simpleStatus(StatusKind.READY, "");
         }
     }
 
@@ -212,6 +388,7 @@ public final class ScannerViewModel extends ViewModel {
         this.selectedFolder = null;
         if (runId == null && !discovering && discovery != null) {
             this.statusText = "Select a folder to scan.";
+            this.statusUiInfo = simpleStatus(StatusKind.SELECT_FOLDER, "");
         }
     }
 
@@ -241,6 +418,95 @@ public final class ScannerViewModel extends ViewModel {
 
     public void setExcludedPathsText(String excludedPathsText) {
         this.excludedPathsText = excludedPathsText != null ? excludedPathsText : "";
+    }
+
+    public List<String> getExcludedPaths() {
+        return parseExcludedLines(excludedPathsText);
+    }
+
+    public boolean addExcludedPath(String folderPath) {
+        if (folderPath == null || folderPath.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = PathPolicy.pathKey(folderPath.trim());
+        List<String> current = new ArrayList<>(parseExcludedLines(excludedPathsText));
+        if (current.contains(normalized)) {
+            return false;
+        }
+        current.add(normalized);
+        this.excludedPathsText = String.join("\n", current);
+        return true;
+    }
+
+    public boolean removeExcludedPath(String folderPath) {
+        if (folderPath == null || folderPath.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = PathPolicy.pathKey(folderPath.trim());
+        List<String> current = new ArrayList<>(parseExcludedLines(excludedPathsText));
+        boolean removed = current.remove(normalized);
+        if (removed) {
+            this.excludedPathsText = current.isEmpty() ? "" : String.join("\n", current);
+        }
+        return removed;
+    }
+
+    public void clearExcludedPaths() {
+        this.excludedPathsText = "";
+    }
+
+    public boolean isScopeExpanded() {
+        return scopeExpanded;
+    }
+
+    public void setScopeExpanded(boolean scopeExpanded) {
+        this.scopeExpanded = scopeExpanded;
+    }
+
+    public boolean isEditExclusionsRaw() {
+        return editExclusionsRaw;
+    }
+
+    public void setEditExclusionsRaw(boolean editExclusionsRaw) {
+        this.editExclusionsRaw = editExclusionsRaw;
+    }
+
+    public boolean hasRunStarted() {
+        return runId != null;
+    }
+
+    public boolean canExportReport() {
+        if (runId == null) {
+            return false;
+        }
+        if (MODE_FOLDER.equals(scanMode)) {
+            return getActiveFolderStore() != null;
+        }
+        return getActiveFileStore() != null;
+    }
+
+    public FolderResultStore getActiveFolderStore() {
+        if (folderController == null || runId == null) {
+            return null;
+        }
+        FolderScanController.RunSnapshot snap = folderController.snapshot();
+        return (snap != null && snap.getRunId() == runId) ? snap.getStore() : null;
+    }
+
+    public com.core.storagetracking.scan.file.FileResultStore getActiveFileStore() {
+        if (fileController == null || runId == null) {
+            return null;
+        }
+        FileScanController.RunSnapshot snap = fileController.snapshot();
+        return (snap != null && snap.getRunId() == runId) ? snap.getStore() : null;
+    }
+
+    public String getPendingReportFocusPath() {
+        return pendingReportFocusPath;
+    }
+
+    public void setPendingReportFocusPath(String pendingReportFocusPath) {
+        this.pendingReportFocusPath = pendingReportFocusPath;
     }
 
     public String getStatusText() {
@@ -298,6 +564,7 @@ public final class ScannerViewModel extends ViewModel {
         this.cancelEnabled = true;
         this.scanning = true;
         this.statusText = "Scanning…";
+        this.statusUiInfo = simpleStatus(StatusKind.SCANNING_STARTING, "");
         this.currentPathText = "";
     }
 
@@ -309,6 +576,7 @@ public final class ScannerViewModel extends ViewModel {
         }
         this.cancelEnabled = false;
         this.statusText = "Cancelling…";
+        this.statusUiInfo = simpleStatus(StatusKind.CANCELLING, "");
     }
 
     public void tick() {
@@ -329,6 +597,7 @@ public final class ScannerViewModel extends ViewModel {
         }
         FolderProgress progress = snapshot.getProgress();
         String state = "Scanning";
+        StatusKind kind = StatusKind.SCANNING;
         if (!snapshot.isFinished() || !Integer.valueOf(snapshot.getRunId()).equals(presentedRunId)) {
             folderTreeState.pollChanges();
             folderTreeState.refreshAllPending();
@@ -336,32 +605,48 @@ public final class ScannerViewModel extends ViewModel {
         if (snapshot.isFinished()) {
             cancelEnabled = false;
             scanning = false;
+            boolean partial = FolderResultStore.STATE_PARTIAL.equals(snapshot.getStore().getState());
             if (snapshot.getError() != null) {
                 state = "Failed";
+                kind = partial ? StatusKind.FAILED_PARTIAL : StatusKind.FAILED;
             } else if (snapshot.getSummary() != null && snapshot.getSummary().isCancelled()) {
                 state = "Cancelled";
+                kind = partial ? StatusKind.CANCELLED_PARTIAL : StatusKind.CANCELLED;
             } else {
                 state = "Completed";
+                kind = partial ? StatusKind.COMPLETED_PARTIAL : StatusKind.COMPLETED;
             }
             if (!Integer.valueOf(snapshot.getRunId()).equals(presentedRunId)) {
                 folderTreeState.pollChanges();
                 folderTreeState.refreshAllPending();
                 presentedRunId = snapshot.getRunId();
             }
-            if (FolderResultStore.STATE_PARTIAL.equals(snapshot.getStore().getState())) {
+            if (partial) {
                 state += " (partial totals)";
             }
         }
+        int foldersStored = snapshot.getStore().getFolderCount();
         statusText = String.format(
                 Locale.US,
                 "%s | Folder scan | Files %,d | Folders %,d | Folders stored %,d | Bytes %,d | Errors %,d | %.1fs",
                 state,
                 progress.getFilesScanned(),
                 progress.getDirectoriesScanned(),
-                snapshot.getStore().getFolderCount(),
+                foldersStored,
                 progress.getBytesScanned(),
                 progress.getErrors(),
                 snapshot.getElapsedSeconds());
+        statusUiInfo = new StatusUiInfo(
+                kind,
+                true,
+                progress.getFilesScanned(),
+                progress.getDirectoriesScanned(),
+                foldersStored,
+                progress.getBytesScanned(),
+                0L,
+                progress.getErrors(),
+                snapshot.getElapsedSeconds(),
+                snapshot.getError());
         currentPathText = snapshot.getError() != null ? snapshot.getError() : progress.getCurrentDirectory();
 
         if (snapshot.isFinished() && !Integer.valueOf(snapshot.getRunId()).equals(notifiedRunId)) {
@@ -375,10 +660,11 @@ public final class ScannerViewModel extends ViewModel {
                         snapshot.getError());
             } else if (snapshot.getSummary() != null && !snapshot.getSummary().isCancelled()) {
                 FolderSummary summary = snapshot.getSummary();
+                boolean partialTotals = FolderResultStore.STATE_PARTIAL.equals(snapshot.getStore().getState());
                 String msg = String.format(
                         Locale.US,
                         "Folders stored: %,d\nLogical bytes: %,d\nTotals: %s\nFiles: %,d\nErrors: %,d\nTime: %.1fs",
-                        snapshot.getStore().getFolderCount(),
+                        foldersStored,
                         summary.getBytesScanned(),
                         snapshot.getStore().getState(),
                         summary.getFilesScanned(),
@@ -389,7 +675,15 @@ public final class ScannerViewModel extends ViewModel {
                         snapshot.getStore(),
                         false,
                         "Scan complete",
-                        msg);
+                        msg,
+                        true,
+                        true,
+                        foldersStored,
+                        summary.getBytesScanned(),
+                        partialTotals,
+                        summary.getFilesScanned(),
+                        summary.getErrors(),
+                        summary.getElapsedSeconds());
             }
         }
     }
@@ -404,6 +698,7 @@ public final class ScannerViewModel extends ViewModel {
         }
         FileScanProgress progress = snapshot.getProgress();
         String state = "Scanning";
+        StatusKind kind = StatusKind.SCANNING;
         if (!snapshot.isFinished() || !Integer.valueOf(snapshot.getRunId()).equals(presentedRunId)) {
             fileTreeState.pollChanges();
             fileTreeState.refreshAllPending();
@@ -413,10 +708,13 @@ public final class ScannerViewModel extends ViewModel {
             scanning = false;
             if (snapshot.getError() != null) {
                 state = "Failed";
+                kind = StatusKind.FAILED;
             } else if (snapshot.getSummary() != null && snapshot.getSummary().isCancelled()) {
                 state = "Cancelled";
+                kind = StatusKind.CANCELLED;
             } else {
                 state = "Completed";
+                kind = StatusKind.COMPLETED;
             }
             if (!Integer.valueOf(snapshot.getRunId()).equals(presentedRunId)) {
                 fileTreeState.pollChanges();
@@ -433,6 +731,17 @@ public final class ScannerViewModel extends ViewModel {
                 progress.getFilesMatched(),
                 progress.getErrors(),
                 snapshot.getElapsedSeconds());
+        statusUiInfo = new StatusUiInfo(
+                kind,
+                false,
+                progress.getFilesScanned(),
+                progress.getDirectoriesScanned(),
+                0L,
+                0L,
+                progress.getFilesMatched(),
+                progress.getErrors(),
+                snapshot.getElapsedSeconds(),
+                snapshot.getError());
         currentPathText = snapshot.getError() != null ? snapshot.getError() : progress.getCurrentDirectory();
 
         if (snapshot.isFinished() && !Integer.valueOf(snapshot.getRunId()).equals(notifiedRunId)) {
@@ -458,7 +767,15 @@ public final class ScannerViewModel extends ViewModel {
                         snapshot.getStore(),
                         false,
                         "Scan complete",
-                        msg);
+                        msg,
+                        true,
+                        false,
+                        summary.getFilesMatched(),
+                        0L,
+                        false,
+                        summary.getFilesScanned(),
+                        summary.getErrors(),
+                        summary.getElapsedSeconds());
             }
         }
     }

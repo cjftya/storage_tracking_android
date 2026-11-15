@@ -29,10 +29,12 @@ Android 로컬 및 이동식 공유 저장소에서 **어느 폴더와 파일이
 - 이 모드에서 폴더에 표시되는 크기는 **조건에 일치한 하위 파일들의 합계(`Matched size`)**이며, 전체 폴더 사용량과 혼동하지 않도록 별도 헤더와 안내 문구로 구분합니다.
 
 ### C. 공통 기능
+- **Material 3 GUI 및 한국어/영어 다국어 지원**: Material 3 카드·버튼·칩·다이얼로그 기반 레이아웃과 한국어(`values-ko`)·영어(`values`) 리소스를 지원합니다. 기기 Day/Night 테마 자동 전환 및 `WindowInsetsCompat` 안전 여백이 적용되어 있습니다.
 - **독립 스캐너 아키텍처**: `FolderScanner`/`FolderResultStore`/`FolderScanController`와 `FileScanner`/`FileResultStore`/`FileScanController`는 완전히 분리되어 있으며 결과·인덱스·상태를 공유하지 않습니다.
-- **사용자별 기본 저장소 자동 선택 및 제외 경로**: 앱 실행 시 현재 Android 사용자 프로필(`0`, 보안 폴더·멀티 유저 `150` 등)의 기본 공유 저장소(`/storage/emulated/<userId>`)를 자동 선택하며, 내부 공유 저장소·SD 카드·USB OTG 볼륨 또는 하위 폴더 하나를 직접 선택하고 줄 단위로 제외할 경로(경로 경계 일치)를 지정할 수 있습니다.
-- **1,000ms 주기 갱신, 원형 프로그레스 및 200개 페이지 지연 로딩**: 스캔 워커는 백그라운드에서 실행되며 스캔 중에는 원형 프로그레스 바(`ProgressBar`)가 표시되고 UI는 약 1초 주기로 상태와 부분 결과를 갱신합니다. 폴더를 펼칠 때 자식 항목을 200개씩 나누어 표시하며(`Load next 200…`), 폴더 길게 누르기(Long press)로 시스템 파일 관리자에서 폴더 열기를 지원합니다.
-- **시스템 Day/Night 테마 및 WindowInsets 대응**: 기기 설정에 따라 라이트/다크 모드가 자동 전환되며, 상태 표시줄·디스플레이 컷아웃·내비게이션 바와 겹치지 않도록 `WindowInsetsCompat` 여백이 적용되어 있습니다.
+- **단일 대상 폴더 + 다중 제외 폴더(`Exclusions`) 관리**: 앱 실행 시 현재 Android 사용자 프로필(`0`, 보안 폴더·멀티 유저 `150` 등)의 기본 공유 저장소(`/storage/emulated/<userId>`)를 자동 선택하며, 접을 수 있는 스캔 범위 카드에서 단일 대상 폴더 아래에 여러 제외 경로를 폴더 선택기(`FolderPickerDialog`)로 추가하고 칩(`Chip`)으로 개별 삭제·전체 초기화하거나 직접 입력 편집으로 전환할 수 있습니다.
+- **실시간 선형 프로그레스, 용량 비율 막대 및 200개 페이지 지연 로딩**: 스캔 워커는 백그라운드에서 실행되며 스캔 중에는 상단 선형 프로그레스 바(`LinearProgressIndicator`)가 표시되고 UI는 약 1초 주기로 상태와 부분 결과를 갱신합니다. 트리 각 항목에는 부모 기준 상대 사용량 막대가 함께 표시되며, 폴더를 펼칠 때 자식 항목을 200개씩 나누어 표시합니다(`Load next 200…`).
+- **폴더 길게 누르기(Long press) 메뉴 및 파일 관리자 선택**: 트리의 폴더를 길게 누르면 **폴더 열기**, **폴더 보고서 내보내기 (.md)**, **제외 목록에 추가**, **경로 복사** 메뉴가 열립니다. 폴더 열기 시 기기에 설치된 파일 관리자 목록을 앱 아이콘과 함께 표시하여 선택 실행할 수 있습니다.
+- **Markdown (`.md`) 보고서 내보내기**: 스캔 결과가 있을 때 하단 상태 바의 `Report (.md)` 버튼, 스캔 완료 다이얼로그, 또는 특정 폴더 길게 누르기 메뉴에서 Android SAF 문서 저장소(`CreateDocument`)를 통해 요약·메타데이터·용량 트리/대용량 파일 목록이 포함된 Markdown 보고서를 저장할 수 있습니다.
 
 ---
 
@@ -67,6 +69,7 @@ app/src/main/java/com/core/storagetracking/
     common/           # PathPolicy, PathFilter, SizeConverter
   storage/            # StorageAccessManager, StorageVolumeProvider, StorageDiscovery,
                       # StorageVolumeInfo, FolderOpener
+  report/             # MarkdownReportGenerator
   util/               # SizeFormatter
 ```
 

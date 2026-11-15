@@ -277,11 +277,11 @@ public final class FolderTreeState {
             return Collections.emptyList();
         }
         List<TreeRowItem> rows = new ArrayList<>();
-        appendChildrenRows(null, 0, rows);
+        appendChildrenRows(null, 0, -1L, rows);
         return Collections.unmodifiableList(rows);
     }
 
-    private void appendChildrenRows(String parentPath, int depth, List<TreeRowItem> out) {
+    private void appendChildrenRows(String parentPath, int depth, long parentSizeBytes, List<TreeRowItem> out) {
         LinkedHashSet<String> childKeys = loadedChildKeys.get(parentPath);
         if (childKeys != null) {
             for (String childKey : childKeys) {
@@ -291,6 +291,14 @@ public final class FolderTreeState {
                 }
                 boolean expanded = expandedFolders.contains(childKey);
                 boolean selected = childKey.equals(selectedPath);
+                float ratio;
+                if (parentPath == null) {
+                    ratio = node.getSizeBytes() > 0L ? 1.0f : 0.0f;
+                } else if (parentSizeBytes > 0L) {
+                    ratio = Math.min(1.0f, Math.max(0.0f, (float) ((double) node.getSizeBytes() / (double) parentSizeBytes)));
+                } else {
+                    ratio = 0.0f;
+                }
                 out.add(new TreeRowItem(
                         childKey,
                         childKey,
@@ -301,9 +309,10 @@ public final class FolderTreeState {
                         false,
                         selected,
                         SizeFormatter.formatDisplaySize(node.getSizeBytes()),
-                        SizeFormatter.formatBytes(node.getSizeBytes())));
+                        SizeFormatter.formatBytes(node.getSizeBytes()),
+                        ratio));
                 if (expanded) {
-                    appendChildrenRows(childKey, depth + 1, out);
+                    appendChildrenRows(childKey, depth + 1, node.getSizeBytes(), out);
                 }
             }
         }

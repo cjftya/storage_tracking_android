@@ -1,36 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/row_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:foreground="?attr/selectableItemBackground"
     android:gravity="center_vertical"
-    android:minHeight="38dp"
+    android:minHeight="46dp"
     android:orientation="horizontal"
-    android:paddingVertical="4dp"
-    android:paddingEnd="8dp">
+    android:paddingVertical="6dp"
+    android:paddingEnd="12dp">
 
-    <TextView
-        android:id="@+id/text_row_indicator"
+    <ImageView
+        android:id="@+id/image_row_chevron"
         android:layout_width="18dp"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:textColor="@color/text_secondary"
-        android:textSize="11sp" />
+        android:layout_height="18dp"
+        android:contentDescription="@string/action_select_folder"
+        android:src="@drawable/ic_chevron_right"
+        app:tint="@color/text_secondary" />
 
-    <TextView
-        android:id="@+id/text_row_name"
+    <ImageView
+        android:id="@+id/image_row_icon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="@string/label_folder"
+        android:src="@drawable/ic_folder"
+        app:tint="@color/folder_icon_tint" />
+
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:ellipsize="middle"
-        android:maxLines="2"
-        android:textColor="@color/text_primary"
-        android:textSize="13sp" />
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/text_row_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="middle"
+            android:maxLines="2"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+
+        <ProgressBar
+            android:id="@+id/progress_row_share"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="4dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressDrawable="@drawable/bg_proportion_bar" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="10dp"
         android:gravity="end"
         android:orientation="vertical">
 

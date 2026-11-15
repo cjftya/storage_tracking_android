@@ -16,6 +16,7 @@ public final class TreeRowItem {
     private final boolean selected;
     private final String formattedSize;
     private final String formattedBytes;
+    private final float parentRatio;
 
     public TreeRowItem(
             String rowId,
@@ -28,6 +29,22 @@ public final class TreeRowItem {
             boolean selected,
             String formattedSize,
             String formattedBytes) {
+        this(rowId, path, name, depth, directory, expanded, loadMoreRow, selected,
+                formattedSize, formattedBytes, -1f);
+    }
+
+    public TreeRowItem(
+            String rowId,
+            String path,
+            String name,
+            int depth,
+            boolean directory,
+            boolean expanded,
+            boolean loadMoreRow,
+            boolean selected,
+            String formattedSize,
+            String formattedBytes,
+            float parentRatio) {
         this.rowId = rowId;
         this.path = path;
         this.name = name;
@@ -38,6 +55,7 @@ public final class TreeRowItem {
         this.selected = selected;
         this.formattedSize = formattedSize == null ? "" : formattedSize;
         this.formattedBytes = formattedBytes == null ? "" : formattedBytes;
+        this.parentRatio = parentRatio;
     }
 
     public String getRowId() {
@@ -80,6 +98,10 @@ public final class TreeRowItem {
         return formattedBytes;
     }
 
+    public float getParentRatio() {
+        return parentRatio;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -90,6 +112,7 @@ public final class TreeRowItem {
                 && expanded == that.expanded
                 && loadMoreRow == that.loadMoreRow
                 && selected == that.selected
+                && Float.compare(that.parentRatio, parentRatio) == 0
                 && Objects.equals(rowId, that.rowId)
                 && Objects.equals(path, that.path)
                 && Objects.equals(name, that.name)
@@ -100,6 +123,6 @@ public final class TreeRowItem {
     @Override
     public int hashCode() {
         return Objects.hash(
-                rowId, path, name, depth, directory, expanded, loadMoreRow, selected, formattedSize, formattedBytes);
+                rowId, path, name, depth, directory, expanded, loadMoreRow, selected, formattedSize, formattedBytes, parentRatio);
     }
 }
