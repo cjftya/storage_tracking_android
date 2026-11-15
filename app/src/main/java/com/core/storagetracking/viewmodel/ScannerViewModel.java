@@ -250,6 +250,7 @@ public final class ScannerViewModel extends ViewModel {
     private boolean editExclusionsRaw = false;
 
     private Integer runId = null;
+    private String activeScanRoot = null;
     private Integer presentedRunId = null;
     private Integer notifiedRunId = null;
     private CompletionNotice pendingNotice = null;
@@ -313,6 +314,7 @@ public final class ScannerViewModel extends ViewModel {
             folderController = null;
         }
         this.runId = null;
+        this.activeScanRoot = null;
         this.presentedRunId = null;
         this.notifiedRunId = null;
         this.pendingNotice = null;
@@ -536,7 +538,8 @@ public final class ScannerViewModel extends ViewModel {
         if (!hasSelectedFolder()) {
             throw new IllegalArgumentException("Select a folder first.");
         }
-        List<String> roots = Collections.singletonList(selectedFolder);
+        String targetRoot = PathPolicy.pathKey(selectedFolder);
+        List<String> roots = Collections.singletonList(targetRoot);
         StorageVolumeProvider.validateRoots(discovery, roots);
         List<String> parsedExclusions = parseExcludedLines(excludedPathsText);
         List<String> effectiveExclusions = StorageVolumeProvider.mergeExclusions(discovery, parsedExclusions);
@@ -546,6 +549,7 @@ public final class ScannerViewModel extends ViewModel {
             FolderConfig config = new FolderConfig(roots, effectiveExclusions, boundaries);
             FolderScanController.RunSnapshot snapshot = folderController.start(config);
             this.runId = snapshot.getRunId();
+            this.activeScanRoot = targetRoot;
             this.presentedRunId = null;
             this.notifiedRunId = null;
             this.pendingNotice = null;
@@ -555,6 +559,7 @@ public final class ScannerViewModel extends ViewModel {
             FileScanConfig config = new FileScanConfig(roots, minSizeBytes, effectiveExclusions, boundaries);
             FileScanController.RunSnapshot snapshot = fileController.start(config);
             this.runId = snapshot.getRunId();
+            this.activeScanRoot = targetRoot;
             this.presentedRunId = null;
             this.notifiedRunId = null;
             this.pendingNotice = null;
@@ -606,10 +611,11 @@ public final class ScannerViewModel extends ViewModel {
             cancelEnabled = false;
             scanning = false;
             boolean partial = FolderResultStore.STATE_PARTIAL.equals(snapshot.getStore().getState());
+            boolean cancelled = snapshot.getSummary() != null && snapshot.getSummary().isCancelled();
             if (snapshot.getError() != null) {
                 state = "Failed";
                 kind = partial ? StatusKind.FAILED_PARTIAL : StatusKind.FAILED;
-            } else if (snapshot.getSummary() != null && snapshot.getSummary().isCancelled()) {
+            } else if (cancelled) {
                 state = "Cancelled";
                 kind = partial ? StatusKind.CANCELLED_PARTIAL : StatusKind.CANCELLED;
             } else {
@@ -619,6 +625,12 @@ public final class ScannerViewModel extends ViewModel {
             if (!Integer.valueOf(snapshot.getRunId()).equals(presentedRunId)) {
                 folderTreeState.pollChanges();
                 folderTreeState.refreshAllPending();
+                if (snapshot.getError() == null && !cancelled) {
+                    if (activeScanRoot != null) {
+                        folderTreeState.expand(activeScanRoot);
+                    }
+                    scopeExpanded = false;
+                }
                 presentedRunId = snapshot.getRunId();
             }
             if (partial) {
@@ -706,10 +718,11 @@ public final class ScannerViewModel extends ViewModel {
         if (snapshot.isFinished()) {
             cancelEnabled = false;
             scanning = false;
+            boolean cancelled = snapshot.getSummary() != null && snapshot.getSummary().isCancelled();
             if (snapshot.getError() != null) {
                 state = "Failed";
                 kind = StatusKind.FAILED;
-            } else if (snapshot.getSummary() != null && snapshot.getSummary().isCancelled()) {
+            } else if (cancelled) {
                 state = "Cancelled";
                 kind = StatusKind.CANCELLED;
             } else {
@@ -719,6 +732,12 @@ public final class ScannerViewModel extends ViewModel {
             if (!Integer.valueOf(snapshot.getRunId()).equals(presentedRunId)) {
                 fileTreeState.pollChanges();
                 fileTreeState.refreshAllPending();
+                if (snapshot.getError() == null && !cancelled) {
+                    if (activeScanRoot != null) {
+                        fileTreeState.expand(activeScanRoot);
+                    }
+                    scopeExpanded = false;
+                }
                 presentedRunId = snapshot.getRunId();
             }
         }

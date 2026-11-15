@@ -133,7 +133,11 @@ public class ScannerIndependenceAndLifecycleTest {
             waitUntilFinished(vmFileFirst);
             vmFileFirst.tick();
             List<TreeRowItem> rows = vmFileFirst.getVisibleRows();
-            assertEquals(1, rows.size());
+            assertEquals(2, rows.size());
+            assertTrue(rows.get(0).isExpanded());
+            assertEquals(0, rows.get(0).getDepth());
+            assertFalse(rows.get(1).isExpanded());
+            assertEquals(1, rows.get(1).getDepth());
             if (ScannerViewModel.MODE_FOLDER.equals(mode)) {
                 assertTrue(vmFileFirst.getStatusText().contains("Folder scan"));
                 assertFalse(vmFileFirst.getStatusText().contains("Matches"));
@@ -312,6 +316,81 @@ public class ScannerIndependenceAndLifecycleTest {
         assertEquals(1.0f, rows.get(0).getParentRatio(), 0.001f);
         assertEquals(0.75f, rows.get(1).getParentRatio(), 0.001f);
         assertEquals(0.25f, rows.get(2).getParentRatio(), 0.001f);
+    }
+
+    @Test
+    public void testScanCompletionExpandsOnlyRootLeavingInnerFoldersCollapsed() throws IOException {
+        long mib = 1024L * 1024L;
+        createFile("dirA/nested/deep.bin", 2L * mib);
+        createFile("dirB/other.bin", mib);
+
+        String rootKey = PathPolicy.pathKey(tempRoot.toString());
+        String dirAKey = PathPolicy.pathKey(tempRoot.resolve("dirA").toString());
+        String dirBKey = PathPolicy.pathKey(tempRoot.resolve("dirB").toString());
+        String nestedKey = PathPolicy.pathKey(tempRoot.resolve("dirA/nested").toString());
+
+        StorageDiscovery discovery = new StorageDiscovery(
+                Collections.singletonList(new StorageVolumeInfo(
+                        rootKey, "TestRoot", true, false, "mounted")),
+                Collections.singletonList(rootKey),
+                Collections.singletonList(rootKey),
+                Collections.emptyList(),
+                Collections.emptyList());
+
+        ScannerViewModel vm = new ScannerViewModel();
+        vm.setDiscovery(discovery, true);
+        vm.selectFolder(rootKey);
+        assertTrue(vm.isScopeExpanded());
+
+        // 1. Folder mode completion expands only root, keeping inner folders collapsed, and collapses scope
+        vm.startScan();
+        waitUntilFinished(vm);
+        assertFalse(vm.isScopeExpanded());
+        List<TreeRowItem> folderRows = vm.getVisibleRows();
+        assertEquals(3, folderRows.size());
+        assertEquals(rootKey, folderRows.get(0).getPath());
+        assertTrue(folderRows.get(0).isExpanded());
+        assertEquals(dirAKey, folderRows.get(1).getPath());
+        assertFalse(folderRows.get(1).isExpanded());
+        assertEquals(dirBKey, folderRows.get(2).getPath());
+        assertFalse(folderRows.get(2).isExpanded());
+        assertFalse(vm.getFolderTreeState().isExpanded(nestedKey));
+
+        // User collapsing root and re-expanding scope after completion must persist across subsequent ticks
+        vm.onRowClicked(folderRows.get(0));
+        vm.setScopeExpanded(true);
+        assertFalse(vm.getFolderTreeState().isExpanded(rootKey));
+        assertTrue(vm.isScopeExpanded());
+        vm.tick();
+        assertFalse(vm.getFolderTreeState().isExpanded(rootKey));
+        assertTrue(vm.isScopeExpanded());
+        assertEquals(1, vm.getVisibleRows().size());
+
+        // 2. File mode completion expands only root, keeping inner folders collapsed, and collapses scope
+        vm.changeMode(ScannerViewModel.MODE_FILE);
+        vm.setMinSizeMibText("1");
+        vm.startScan();
+        waitUntilFinished(vm);
+        assertFalse(vm.isScopeExpanded());
+        List<TreeRowItem> fileRows = vm.getVisibleRows();
+        assertEquals(3, fileRows.size());
+        assertEquals(rootKey, fileRows.get(0).getPath());
+        assertTrue(fileRows.get(0).isExpanded());
+        assertFalse(fileRows.get(1).isExpanded());
+        assertEquals(1, fileRows.get(1).getDepth());
+        assertFalse(fileRows.get(2).isExpanded());
+        assertEquals(1, fileRows.get(2).getDepth());
+        List<String> fileChildPaths = Arrays.asList(fileRows.get(1).getPath(), fileRows.get(2).getPath());
+        assertTrue(fileChildPaths.contains(dirAKey));
+        assertTrue(fileChildPaths.contains(dirBKey));
+        assertFalse(vm.getFileTreeState().isExpanded(nestedKey));
+
+        // User collapsing root after completion must persist across subsequent ticks
+        vm.onRowClicked(fileRows.get(0));
+        assertFalse(vm.getFileTreeState().isExpanded(rootKey));
+        vm.tick();
+        assertFalse(vm.getFileTreeState().isExpanded(rootKey));
+        assertEquals(1, vm.getVisibleRows().size());
     }
 
     private static void waitUntilFinished(ScannerViewModel vm) {

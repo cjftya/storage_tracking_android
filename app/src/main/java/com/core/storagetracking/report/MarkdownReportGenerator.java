@@ -10,20 +10,31 @@ import com.core.storagetracking.viewmodel.ScannerViewModel;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.PriorityQueue;
 
 /**
- * Generates structured Markdown (.md) storage analysis reports from either
+ * Generates concise, fast Markdown (.md) storage analysis reports from either
  * FolderResultStore or FileResultStore without modifying any scanned files.
  */
 public final class MarkdownReportGenerator {
 
-    private static final int TOP_LIMIT = 25;
-    private static final int MAX_TREE_DEPTH = 6;
-    private static final int MAX_TREE_LINES = 1500;
-    private static final int PAGE_FETCH_SIZE = 500;
+    private static final int TOP_LIMIT = 15;
+    private static final int MAX_TREE_DEPTH = 3;
+    private static final int MAX_CHILDREN_PER_NODE = 15;
+    private static final int MAX_TREE_LINES = 150;
+    private static final int MAX_COLLECT_FOLDERS = 300;
+    private static final int MAX_COLLECT_FILES = 500;
+    private static final int MAX_EXCLUDED_LINES = 20;
+    private static final int PAGE_FETCH_SIZE = 100;
+
+    private static final Comparator<FolderNode> FOLDER_SIZE_DESC = (a, b) -> {
+        int cmp = Long.compare(b.getSizeBytes(), a.getSizeBytes());
+        return cmp != 0 ? cmp : a.getPath().compareTo(b.getPath());
+    };
 
     private MarkdownReportGenerator() {
     }
@@ -66,22 +77,14 @@ public final class MarkdownReportGenerator {
         }
 
         // Top largest subfolders under scopePath
-        List<FolderNode> allFolders = new ArrayList<>();
-        collectFoldersBreadthBounded(store, rootNode.getPath(), allFolders, 3000);
-        allFolders.sort((a, b) -> {
-            int cmp = Long.compare(b.getSizeBytes(), a.getSizeBytes());
-            return cmp != 0 ? cmp : a.getPath().compareTo(b.getPath());
-        });
+        List<FolderNode> topFolders = collectTopFolders(store, rootNode);
 
         sb.append('\n').append(ko ? "## 상위 용량 폴더" : "## Top Folders").append("\n\n");
         sb.append(ko
                 ? "| # | 경로 | 크기 | 바이트 | 비중 |\n| ---: | --- | ---: | ---: | ---: |\n"
                 : "| # | Path | Size | Bytes | Share |\n| ---: | --- | ---: | ---: | ---: |\n");
         int shown = 0;
-        for (FolderNode node : allFolders) {
-            if (node.getPath().equals(rootNode.getPath())) {
-                continue;
-            }
+        for (FolderNode node : topFolders) {
             shown++;
             if (shown > TOP_LIMIT) {
                 break;
@@ -104,11 +107,14 @@ public final class MarkdownReportGenerator {
         sb.append('\n').append(ko ? "## 디렉터리 트리 요약" : "## Directory Tree Breakdown").append("\n\n");
         int[] lineCount = new int[]{0};
         boolean[] truncated = new boolean[]{false};
-        appendFolderTree(sb, store, rootNode, 0, scopeTotalBytes, lineCount, truncated);
+        appendFolderTree(sb, store, rootNode, 0, scopeTotalBytes, lineCount, truncated, ko);
         if (truncated[0]) {
             sb.append('\n').append(ko
-                    ? "> 참고: 보고서 크기를 유지하기 위해 최대 깊이(" + MAX_TREE_DEPTH + ") 또는 최대 항목(" + MAX_TREE_LINES + ") 이후 하위 항목이 생략되었습니다.\n"
-                    : "> Note: Deeper or remaining branches were truncated at max depth (" + MAX_TREE_DEPTH + ") or max entries (" + MAX_TREE_LINES + ").\n");
+                    ? "> 참고: 간결한 보고서를 위해 최대 깊이(" + MAX_TREE_DEPTH
+                            + "), 폴더당 최대 항목(" + MAX_CHILDREN_PER_NODE
+                            + "), 전체 최대 항목(" + MAX_TREE_LINES + ") 이후 하위 항목이 생략되었습니다.\n"
+                    : "> Note: Deeper or remaining branches were omitted for brevity (max depth " + MAX_TREE_DEPTH
+                            + ", max " + MAX_CHILDREN_PER_NODE + " per folder, max " + MAX_TREE_LINES + " entries).\n");
         }
 
         return sb.toString();
@@ -139,7 +145,7 @@ public final class MarkdownReportGenerator {
         }
 
         List<FileResultNode> matchedFiles = new ArrayList<>();
-        collectMatchedFiles(store, rootNode, matchedFiles, 5000);
+        collectMatchedFiles(store, rootNode, matchedFiles, MAX_COLLECT_FILES);
         matchedFiles.sort((a, b) -> {
             int cmp = Long.compare(b.getSizeBytes(), a.getSizeBytes());
             return cmp != 0 ? cmp : a.getPath().compareTo(b.getPath());
@@ -168,11 +174,14 @@ public final class MarkdownReportGenerator {
         sb.append('\n').append(ko ? "## 일치 파일 트리" : "## Matched File Tree").append("\n\n");
         int[] lineCount = new int[]{0};
         boolean[] truncated = new boolean[]{false};
-        appendFileTree(sb, store, rootNode, 0, scopeTotalBytes, lineCount, truncated);
+        appendFileTree(sb, store, rootNode, 0, scopeTotalBytes, lineCount, truncated, ko);
         if (truncated[0]) {
             sb.append('\n').append(ko
-                    ? "> 참고: 보고서 크기를 유지하기 위해 최대 깊이(" + MAX_TREE_DEPTH + ") 또는 최대 항목(" + MAX_TREE_LINES + ") 이후 항목이 생략되었습니다.\n"
-                    : "> Note: Additional entries were truncated at max depth (" + MAX_TREE_DEPTH + ") or max entries (" + MAX_TREE_LINES + ").\n");
+                    ? "> 참고: 간결한 보고서를 위해 최대 깊이(" + MAX_TREE_DEPTH
+                            + "), 폴더당 최대 항목(" + MAX_CHILDREN_PER_NODE
+                            + "), 전체 최대 항목(" + MAX_TREE_LINES + ") 이후 항목이 생략되었습니다.\n"
+                    : "> Note: Additional entries were omitted for brevity (max depth " + MAX_TREE_DEPTH
+                            + ", max " + MAX_CHILDREN_PER_NODE + " per folder, max " + MAX_TREE_LINES + " entries).\n");
         }
 
         return sb.toString();
@@ -231,36 +240,67 @@ public final class MarkdownReportGenerator {
 
         if (excludedPaths != null && !excludedPaths.isEmpty()) {
             sb.append('\n').append(ko ? "### 제외된 경로" : "### Excluded Paths").append("\n\n");
-            for (String ex : excludedPaths) {
-                sb.append("- `").append(escapeInlineCode(ex)).append("`\n");
+            int limit = Math.min(excludedPaths.size(), MAX_EXCLUDED_LINES);
+            for (int i = 0; i < limit; i++) {
+                sb.append("- `").append(escapeInlineCode(excludedPaths.get(i))).append("`\n");
+            }
+            if (excludedPaths.size() > MAX_EXCLUDED_LINES) {
+                int omitted = excludedPaths.size() - MAX_EXCLUDED_LINES;
+                sb.append("- ").append(ko
+                        ? String.format(Locale.US, "… 외 %,d개 경로 생략\n", omitted)
+                        : String.format(Locale.US, "… and %,d more paths\n", omitted));
             }
         }
     }
 
+    private static List<FolderNode> collectTopFolders(FolderResultStore store, FolderNode rootNode) {
+        if (store.isFinalized()) {
+            // Finalized stores already maintain children sorted by descending sizeBytes,
+            // so a bounded best-first search finds the exact Top N in O(N log N) page reads.
+            List<FolderNode> top = new ArrayList<>(TOP_LIMIT);
+            PriorityQueue<FolderNode> pq = new PriorityQueue<>(FOLDER_SIZE_DESC);
+            pq.addAll(store.childrenPage(rootNode.getPath(), 0, TOP_LIMIT).getNodes());
+            while (!pq.isEmpty() && top.size() < TOP_LIMIT) {
+                FolderNode best = pq.poll();
+                top.add(best);
+                if (top.size() < TOP_LIMIT) {
+                    pq.addAll(store.childrenPage(best.getPath(), 0, TOP_LIMIT).getNodes());
+                }
+            }
+            return top;
+        }
+        List<FolderNode> collected = new ArrayList<>();
+        collectFoldersBreadthBounded(store, rootNode, collected, MAX_COLLECT_FOLDERS);
+        collected.sort(FOLDER_SIZE_DESC);
+        return collected.size() > TOP_LIMIT ? collected.subList(0, TOP_LIMIT) : collected;
+    }
+
     private static void collectFoldersBreadthBounded(
             FolderResultStore store,
-            String rootPath,
+            FolderNode rootNode,
             List<FolderNode> out,
             int maxCollect) {
-        List<String> queue = new ArrayList<>();
-        queue.add(rootPath);
+        List<FolderNode> queue = new ArrayList<>();
+        queue.add(rootNode);
         int idx = 0;
         while (idx < queue.size() && out.size() < maxCollect) {
-            String path = queue.get(idx++);
-            FolderNode node = store.node(path);
-            if (node != null) {
+            FolderNode node = queue.get(idx++);
+            if (!node.getPath().equals(rootNode.getPath())) {
                 out.add(node);
             }
             int offset = 0;
-            while (out.size() + queue.size() < maxCollect * 2) {
-                FolderResultStore.Page page = store.childrenPage(path, offset, PAGE_FETCH_SIZE);
+            while (out.size() + queue.size() - idx < maxCollect * 2) {
+                int remaining = maxCollect * 2 - (out.size() + queue.size() - idx);
+                int fetch = Math.min(PAGE_FETCH_SIZE, remaining);
+                if (fetch <= 0) {
+                    break;
+                }
+                FolderResultStore.Page page = store.childrenPage(node.getPath(), offset, fetch);
                 List<FolderNode> children = page.getNodes();
                 if (children.isEmpty()) {
                     break;
                 }
-                for (FolderNode child : children) {
-                    queue.add(child.getPath());
-                }
+                queue.addAll(children);
                 offset += children.size();
                 if (offset >= page.getTotalCount()) {
                     break;
@@ -281,6 +321,7 @@ public final class MarkdownReportGenerator {
         List<String> queue = new ArrayList<>();
         queue.add(startNode.getPath());
         int idx = 0;
+        int maxQueuedDirs = maxCollect * 2;
         while (idx < queue.size() && out.size() < maxCollect) {
             String dirPath = queue.get(idx++);
             int offset = 0;
@@ -292,7 +333,9 @@ public final class MarkdownReportGenerator {
                 }
                 for (FileResultNode child : children) {
                     if (child.isDirectory()) {
-                        queue.add(child.getPath());
+                        if (queue.size() < maxQueuedDirs) {
+                            queue.add(child.getPath());
+                        }
                     } else {
                         out.add(child);
                         if (out.size() >= maxCollect) {
@@ -315,15 +358,14 @@ public final class MarkdownReportGenerator {
             int depth,
             long scopeTotalBytes,
             int[] lineCount,
-            boolean[] truncated) {
+            boolean[] truncated,
+            boolean ko) {
         if (lineCount[0] >= MAX_TREE_LINES) {
             truncated[0] = true;
             return;
         }
         lineCount[0]++;
-        for (int i = 0; i < depth; i++) {
-            sb.append("  ");
-        }
+        appendIndent(sb, depth);
         String displayName = depth == 0 ? node.getPath() : node.getName();
         sb.append("- **").append(escapeInlineCode(displayName)).append("/** — ")
                 .append(SizeFormatter.formatDisplaySize(node.getSizeBytes()))
@@ -336,24 +378,26 @@ public final class MarkdownReportGenerator {
             }
             return;
         }
-        int offset = 0;
-        while (lineCount[0] < MAX_TREE_LINES) {
-            FolderResultStore.Page page = store.childrenPage(node.getPath(), offset, PAGE_FETCH_SIZE);
-            List<FolderNode> children = page.getNodes();
-            if (children.isEmpty()) {
-                break;
+        int remainingLines = MAX_TREE_LINES - lineCount[0];
+        if (remainingLines <= 0) {
+            if (store.childCount(node.getPath()) > 0) {
+                truncated[0] = true;
             }
-            for (FolderNode child : children) {
-                if (lineCount[0] >= MAX_TREE_LINES) {
-                    truncated[0] = true;
-                    return;
-                }
-                appendFolderTree(sb, store, child, depth + 1, scopeTotalBytes, lineCount, truncated);
+            return;
+        }
+        int fetchLimit = Math.min(MAX_CHILDREN_PER_NODE, remainingLines);
+        FolderResultStore.Page page = store.childrenPage(node.getPath(), 0, fetchLimit);
+        List<FolderNode> children = page.getNodes();
+        for (FolderNode child : children) {
+            if (lineCount[0] >= MAX_TREE_LINES) {
+                truncated[0] = true;
+                return;
             }
-            offset += children.size();
-            if (offset >= page.getTotalCount()) {
-                break;
-            }
+            appendFolderTree(sb, store, child, depth + 1, scopeTotalBytes, lineCount, truncated, ko);
+        }
+        if (page.getTotalCount() > children.size()) {
+            truncated[0] = true;
+            appendOmittedLine(sb, depth + 1, page.getTotalCount() - children.size(), lineCount, ko);
         }
     }
 
@@ -364,15 +408,14 @@ public final class MarkdownReportGenerator {
             int depth,
             long scopeTotalBytes,
             int[] lineCount,
-            boolean[] truncated) {
+            boolean[] truncated,
+            boolean ko) {
         if (lineCount[0] >= MAX_TREE_LINES) {
             truncated[0] = true;
             return;
         }
         lineCount[0]++;
-        for (int i = 0; i < depth; i++) {
-            sb.append("  ");
-        }
+        appendIndent(sb, depth);
         String displayName = depth == 0 ? node.getPath() : node.getName();
         if (node.isDirectory()) {
             sb.append("- **").append(escapeInlineCode(displayName)).append("/** — ");
@@ -392,33 +435,57 @@ public final class MarkdownReportGenerator {
             }
             return;
         }
-        int offset = 0;
-        while (lineCount[0] < MAX_TREE_LINES) {
-            FileResultStore.Page page = store.childrenPage(node.getPath(), offset, PAGE_FETCH_SIZE);
-            List<FileResultNode> children = page.getNodes();
-            if (children.isEmpty()) {
-                break;
+        int remainingLines = MAX_TREE_LINES - lineCount[0];
+        if (remainingLines <= 0) {
+            if (store.childCount(node.getPath()) > 0) {
+                truncated[0] = true;
             }
-            for (FileResultNode child : children) {
-                if (lineCount[0] >= MAX_TREE_LINES) {
-                    truncated[0] = true;
-                    return;
-                }
-                appendFileTree(sb, store, child, depth + 1, scopeTotalBytes, lineCount, truncated);
+            return;
+        }
+        int fetchLimit = Math.min(MAX_CHILDREN_PER_NODE, remainingLines);
+        FileResultStore.Page page = store.childrenPage(node.getPath(), 0, fetchLimit);
+        List<FileResultNode> children = page.getNodes();
+        for (FileResultNode child : children) {
+            if (lineCount[0] >= MAX_TREE_LINES) {
+                truncated[0] = true;
+                return;
             }
-            offset += children.size();
-            if (offset >= page.getTotalCount()) {
-                break;
-            }
+            appendFileTree(sb, store, child, depth + 1, scopeTotalBytes, lineCount, truncated, ko);
+        }
+        if (page.getTotalCount() > children.size()) {
+            truncated[0] = true;
+            appendOmittedLine(sb, depth + 1, page.getTotalCount() - children.size(), lineCount, ko);
         }
     }
 
+    private static void appendIndent(StringBuilder sb, int depth) {
+        for (int i = 0; i < depth; i++) {
+            sb.append("  ");
+        }
+    }
+
+    private static void appendOmittedLine(
+            StringBuilder sb,
+            int depth,
+            int omittedCount,
+            int[] lineCount,
+            boolean ko) {
+        if (omittedCount <= 0 || lineCount[0] >= MAX_TREE_LINES) {
+            return;
+        }
+        lineCount[0]++;
+        appendIndent(sb, depth);
+        sb.append("- ").append(ko
+                ? String.format(Locale.US, "… 외 %,d개 항목 생략\n", omittedCount)
+                : String.format(Locale.US, "… and %,d more items\n", omittedCount));
+    }
+
     private static String formatShare(long part, long total) {
-        if (total <= 0L) {
+        if (total <= 0L || part <= 0L) {
             return "0.0%";
         }
-        double pct = Math.min(100.0, Math.max(0.0, (part * 100.0) / total));
-        return String.format(Locale.US, "%.1f%%", pct);
+        long tenths = Math.min(1000L, (part * 1000L + total / 2L) / total);
+        return (tenths / 10L) + "." + (tenths % 10L) + "%";
     }
 
     private static String formatStatusKind(ScannerViewModel.StatusKind kind, boolean ko) {
